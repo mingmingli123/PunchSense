@@ -1,0 +1,66 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="980" height="620" viewBox="0 0 980 620">
+  <defs>
+    <style>
+      text { font-family: -apple-system, BlinkMacSystemFont, "Helvetica Neue", Arial, sans-serif; fill: #1f2933; }
+      .title { font-size: 28px; font-weight: 700; }
+      .label { font-size: 18px; font-weight: 650; }
+      .note { font-size: 15px; fill: #51606f; }
+      .small { font-size: 13px; fill: #51606f; }
+      .board { fill: rgba(47,157,224,0.08); stroke: #2f9de0; stroke-width: 4; }
+      .void { fill: rgba(255,255,255,0.72); stroke: #2f9de0; stroke-width: 2; stroke-dasharray: 8 6; }
+      .grid { stroke: rgba(47,157,224,0.22); stroke-width: 1; }
+      .pad { fill: rgba(17,17,17,0.16); stroke: #111; stroke-width: 4; }
+      .padline { stroke: #111; stroke-width: 2; }
+      .d2 { fill: rgba(31,143,95,0.15); stroke: #1f8f5f; stroke-width: 5; }
+      .d7 { fill: rgba(123,97,255,0.15); stroke: #7b61ff; stroke-width: 5; }
+      .arrow { stroke: #334155; stroke-width: 2.5; fill: none; marker-end: url(#arrow); }
+      .bad { stroke: #e05b35; stroke-width: 4; stroke-linecap: round; }
+    </style>
+    <marker id="arrow" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto" markerUnits="strokeWidth">
+      <path d="M0,0 L0,6 L9,3 z" fill="#334155"/>
+    </marker>
+  </defs>
+
+  <rect width="980" height="620" fill="#f7fafc"/>
+  <text class="title" x="48" y="54">XIAO PCB 镂空、黑色接触块与 D2/D7 吸附边</text>
+  <text class="note" x="48" y="84">蓝色是 PCB 留空位置；黑色是导电 TPU 接触块；绿色/紫色才是蛇形线端点应该吸附的逻辑目标。</text>
+
+  <g transform="translate(86 130)">
+    <rect class="board" x="180" y="40" width="270" height="360" rx="4"/>
+    <path class="grid" d="M200 40 V400 M220 40 V400 M240 40 V400 M260 40 V400 M280 40 V400 M300 40 V400 M320 40 V400 M340 40 V400 M360 40 V400 M380 40 V400 M400 40 V400 M420 40 V400 M440 40 V400"/>
+    <path class="grid" d="M180 60 H450 M180 80 H450 M180 100 H450 M180 120 H450 M180 140 H450 M180 160 H450 M180 180 H450 M180 200 H450 M180 220 H450 M180 240 H450 M180 260 H450 M180 280 H450 M180 300 H450 M180 320 H450 M180 340 H450 M180 360 H450 M180 380 H450"/>
+
+    <rect class="void" x="258" y="160" width="114" height="104" rx="3"/>
+    <text class="label" x="236" y="146">PCB 空位 / cutout</text>
+    <text class="small" x="225" y="286">这里是不打印的孔位区域，用来放 XIAO 板</text>
+
+    <rect class="pad" x="250" y="137" width="130" height="30" rx="2"/>
+    <line class="padline" x1="258" y1="147" x2="372" y2="147"/>
+    <line class="padline" x1="258" y1="157" x2="372" y2="157"/>
+    <rect class="pad" x="250" y="257" width="130" height="30" rx="2"/>
+    <line class="padline" x1="258" y1="267" x2="372" y2="267"/>
+    <line class="padline" x1="258" y1="277" x2="372" y2="277"/>
+    <text class="label" x="430" y="160">黑色 TPU 接触块</text>
+    <text class="small" x="430" y="184">这是打印出来的导电区域，</text>
+    <text class="small" x="430" y="204">不是“整条都可作为端点”的意思。</text>
+
+    <circle class="d7" cx="258" cy="160" r="17"/>
+    <text class="label" x="76" y="151" fill="#7b61ff">D7 / GPIO20 / RECEIVE</text>
+    <path class="arrow" d="M246 160 C200 156 178 154 146 154"/>
+    <text class="small" x="62" y="178">点到 D7 所在边，应吸附到这里</text>
+
+    <circle class="d2" cx="312" cy="264" r="17"/>
+    <text class="label" x="76" y="339" fill="#1f8f5f">D2 / GPIO4 / SEND</text>
+    <path class="arrow" d="M306 281 C245 312 208 326 146 332"/>
+    <text class="small" x="62" y="366">点到 D2 所在边，应吸附到这里</text>
+
+    <line class="bad" x1="390" y1="210" x2="455" y2="210"/>
+    <text class="label" x="470" y="216" fill="#e05b35">不应该：点任意黑边都可选</text>
+    <text class="small" x="470" y="240">这就是目前你看到的问题。</text>
+  </g>
+
+  <g transform="translate(80 545)">
+    <rect x="0" y="-28" width="840" height="46" rx="6" fill="#fff" stroke="#cbd5df"/>
+    <text class="note" x="18" y="0">建议 UI 改法：隐藏普通橙色可选边；只在 D2/D7 所在 PCB 边显示绿色/紫色高亮，并在状态栏写明“当前吸附到 D2 / D7 / 无”。</text>
+  </g>
+</svg>

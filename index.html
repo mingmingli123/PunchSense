@@ -1,0 +1,305 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta http-equiv="Cache-Control" content="no-store">
+  <meta http-equiv="Pragma" content="no-cache">
+  <meta http-equiv="Expires" content="0">
+  <title>PunchPrint 自动连接 Workflow</title>
+  <link rel="stylesheet" href="./style.css?v=auto-workflow-pin-endpoint-final-v1-20260827">
+</head>
+<body>
+  <main class="app">
+    <section class="workbench" aria-label="打印平台绘图区">
+      <div class="toolbar">
+        <div>
+          <h1>PunchPrint 自动连接 Workflow</h1>
+          <p>先定义材料区域，再生成对应颜色的 EPI 网格和 G-code。</p>
+        </div>
+        <div class="readout" id="readout">-</div>
+      </div>
+      <div class="canvasArea">
+        <canvas id="bedCanvas" width="900" height="900" aria-label="打印平台"></canvas>
+        <aside class="snakeManager" aria-label="TPU 蛇形线管理">
+          <div class="snakeManagerHeader">
+            <h2>TPU 蛇形线</h2>
+            <button id="addTpuSnakeFromManager" type="button">新增</button>
+          </div>
+          <div id="tpuSnakeList" class="snakeList"></div>
+        </aside>
+      </div>
+    </section>
+
+    <aside class="panel" aria-label="参数面板">
+      <section>
+        <h2>流程</h2>
+        <label>
+          当前阶段
+          <select id="workflowMode">
+            <option value="design" selected>1 材料区域</option>
+            <option value="grid">2 网格预览 / G-code</option>
+          </select>
+        </label>
+        <p class="hint">第 1 阶段只显示纯色材料区域；第 2 阶段显示按材料着色的 EPI 网格。</p>
+      </section>
+
+      <section data-stage="design">
+        <h2>材料区域</h2>
+        <label>
+          绘制模式
+          <select id="drawMode">
+            <option value="rect" selected>矩形拖拽</option>
+            <option value="free">自由手绘闭合线</option>
+            <option value="polyline">多边形点选闭合</option>
+          </select>
+        </label>
+        <div class="buttonGrid">
+          <button id="addCircle" type="button">放置圆形</button>
+          <button id="addTriangle" type="button">放置三角形</button>
+          <button id="addHexagon" type="button">放置六边形</button>
+          <button id="addPcbCutout" type="button">放置 XIAO PCB 镂空</button>
+          <button id="rotatePcbCutout" type="button" title="旋转选中的 XIAO PCB 镂空 90°" aria-label="旋转选中的 XIAO PCB 镂空 90°">↻</button>
+          <button id="autoPlacePcbAndGuides" type="button">自动 PCB + Guide</button>
+        </div>
+        <div class="buttonGrid">
+          <button id="importSvgButton" type="button">导入 SVG 轮廓</button>
+          <input id="svgImport" class="visuallyHidden" type="file" accept=".svg,image/svg+xml">
+          <button id="loadProjectButton" type="button">加载保存图形</button>
+          <input id="projectImport" class="visuallyHidden" type="file" accept=".json,application/json">
+          <button id="saveProjectButton" type="button">保存当前图形</button>
+        </div>
+        <label>
+          当前/选中材料
+          <select id="shapeMaterial">
+            <option value="0" selected>材料 1 / T0 / 黑色 TPU</option>
+            <option value="1">材料 2 / T1 / 备用 TPU</option>
+            <option value="2">材料 3 / T2 / 白色 TPU</option>
+            <option value="3">材料 4 / T3 / PLA</option>
+            <option value="-1">镂空 / 不打印</option>
+          </select>
+        </label>
+        <label class="checkLabel">
+          <input id="regionSelectMode" type="checkbox">
+          区域点选材料
+        </label>
+        <div id="shapeSizeEditor" class="shapeSizeEditor" hidden>
+          <h3>图形尺寸</h3>
+          <label id="shapeWidthField">
+            宽度 (mm)
+            <input id="shapeEditWidth" type="number" min="0.1" max="500" step="0.1" value="">
+          </label>
+          <label id="shapeHeightField">
+            高度 (mm)
+            <input id="shapeEditHeight" type="number" min="0.1" max="500" step="0.1" value="">
+          </label>
+          <label id="shapeRadiusField">
+            半径 (mm)
+            <input id="shapeEditRadius" type="number" min="0.1" max="250" step="0.1" value="">
+          </label>
+          <label id="shapeDiameterField">
+            直径 (mm)
+            <input id="shapeEditDiameter" type="number" min="0.2" max="500" step="0.1" value="">
+          </label>
+        </div>
+        <p class="hint">关闭区域点选时修改整个图形；打开后点击由边界包裹的小区域，可给重叠区域单独指定材料。</p>
+        <p class="hint status" id="svgImportStatus">SVG 导入/保存：等待文件。SVG 支持闭合轮廓；红色开放线会作为 T0 蛇形 guide，黑色闭合轮廓会作为 T0 区域。</p>
+      </section>
+
+      <section data-stage="grid">
+        <h2>网格</h2>
+        <label>
+          EPI
+          <input id="epi" type="number" min="4" max="40" step="0.5" value="12">
+        </label>
+        <label>
+          网格线道数
+          <input id="gridLineCount" type="number" min="1" max="12" step="1" value="1">
+        </label>
+        <label>
+          黑色 TPU 填充
+          <select id="tpuFillMode">
+            <option value="grid" selected>网格</option>
+            <option value="solid">实心</option>
+          </select>
+        </label>
+        <label class="checkLabel">
+          <input id="pcbPinContactsEnabled" type="checkbox" checked>
+          PCB pin 范围生成导电 TPU 细密网格
+        </label>
+        <label>
+          PCB pin 接触区 EPI
+          <input id="pcbPinContactEpi" type="number" min="4" max="80" step="1" value="24">
+        </label>
+        <label>
+          PCB pin 接触区宽度 (mm)
+          <input id="pcbPinContactWidth" type="number" min="0.4" max="5" step="0.1" value="1.6">
+        </label>
+        <label>
+          PCB pin 额外加高层数
+          <input id="pcbPinExtraLayerCount" type="number" min="0" max="8" step="1" value="3">
+        </label>
+        <label>
+          白色 TPU 外框圈数
+          <input id="frameLoops" type="number" min="0" max="10" step="1" value="3">
+        </label>
+        <label>
+          外框线中心距 (mm)
+          <input id="frameSpacing" type="number" min="0.1" max="5" step="0.01" value="0.42">
+        </label>
+        <p class="hint">外框固定使用白色 TPU / T2，沿整体外边界生成；设为 0 则不额外生成外框。</p>
+        <p class="hint">当前 G-code 不会额外生成 T3 PLA 外框。</p>
+        <label>
+          交界重叠宽度 (mm)
+          <input id="materialOverlapWidth" type="number" min="0" max="10" step="0.1" value="0">
+        </label>
+        <label>
+          预览层号
+          <input id="previewLayer" type="number" min="1" max="200" step="1" value="2">
+        </label>
+        <label class="checkLabel">
+          <input id="materialBoundaryFrames" type="checkbox" checked>
+          材料交界处显示框线
+        </label>
+        <p class="hint">网格线宽 = 单道打印线宽 x 线道数；交界重叠会按层交替把材料分界线向另一侧偏移。</p>
+        <label class="checkLabel">
+          <input id="tpuSnakeEnabled" type="checkbox">
+          T0 TPU 生成蛇形线
+        </label>
+        <label>
+          打印模式
+          <select id="printMode">
+            <option value="crossing" selected>交叉：白色网格与黑色蛇形线同层交叉</option>
+            <option value="exposed">裸露：底部支撑 + 上方黑色 TPU</option>
+            <option value="wrapped">包裹：蛇形线在内部，白色避让蛇形线</option>
+          </select>
+        </label>
+        <input id="exposedSnakeMode" type="checkbox" class="visuallyHidden" aria-hidden="true">
+        <label>
+          底部层数
+          <input id="bottomLayerCount" type="number" min="1" max="200" step="1" value="1">
+        </label>
+        <label>
+          蛇形线层数
+          <input id="tpuSnakeLayerCount" type="number" min="0" max="200" step="1" value="1">
+        </label>
+        <label>
+          黑色实心块层数
+          <input id="t0BlockLayerCount" type="number" min="0" max="200" step="1" value="5">
+        </label>
+        <label>
+          TPU 剩余区域材料
+          <select id="tpuSnakeRemainderMaterial">
+            <option value="1">材料 2 / T1 / 备用 TPU</option>
+            <option value="2" selected>材料 3 / T2 / 白色 TPU</option>
+            <option value="3">材料 4 / T3 / PLA</option>
+          </select>
+        </label>
+        <label>
+          蛇形线层打印顺序
+          <select id="tpuSnakeMaterialOrder">
+            <option value="remainder-first" selected>先打剩余材料 / 白色 TPU，再打黑色 TPU</option>
+            <option value="t0-first">先打黑色 TPU，再打剩余材料 / 白色 TPU</option>
+          </select>
+        </label>
+        <label class="checkLabel">
+          <input id="tpuSnakeCornerRelief" type="checkbox">
+          蛇形线拐角避让白色 TPU
+        </label>
+        <label class="checkLabel">
+          <input id="tpuSnakeAllowCrossings" type="checkbox" checked>
+          保留黑白正交交叉点
+        </label>
+        <label>
+          目标 TPU 路径长度 (mm)
+          <input id="tpuSnakeTargetLength" type="number" min="0" max="5000" step="1" value="200">
+        </label>
+        <label>
+          端点法线段长度 (mm)
+          <input id="tpuSnakeNormalLeadLength" type="number" min="0" max="50" step="0.5" value="3">
+        </label>
+        <button id="pickTpuSnakeEndpoints" type="button">新增 TPU 蛇形线</button>
+        <button id="clearTpuSnakeEndpoints" type="button">清除全部蛇形线</button>
+        <p class="hint status" id="tpuSnakeStatus">TPU 蛇形：未开启。开启后可新增多条 T0 区域之间的蛇形线。</p>
+      </section>
+
+      <section data-stage="grid">
+        <h2>打印机/平台</h2>
+        <label>
+          平台宽度 X (mm)
+          <input id="bedWidth" type="number" min="50" max="500" step="0.5" value="270">
+        </label>
+        <label>
+          平台深度 Y (mm)
+          <input id="bedDepth" type="number" min="50" max="500" step="0.5" value="270">
+        </label>
+        <label>
+          喷嘴直径 (mm)
+          <input id="nozzleDiameter" type="number" min="0.1" max="2" step="0.05" value="0.4">
+        </label>
+        <label>
+          单道打印线宽 (mm)
+          <input id="beadWidth" type="number" min="0.1" max="3" step="0.01" value="0.42">
+        </label>
+        <p class="hint">建议范围约为喷嘴直径的 0.75-1.5 倍，且不要小于层高。</p>
+        <label>
+          层高 (mm)
+          <select id="layerHeight">
+            <option value="0.08">0.08</option>
+            <option value="0.12">0.12</option>
+            <option value="0.16">0.16</option>
+            <option value="0.2" selected>0.20</option>
+            <option value="0.24">0.24</option>
+            <option value="0.28">0.28</option>
+          </select>
+        </label>
+        <label>
+          首层高度 (mm)
+          <input id="firstLayerHeight" type="number" min="0.08" max="0.4" step="0.01" value="0.25">
+        </label>
+        <label>
+          底板层数
+          <input id="baseLayerCount" type="number" min="1" max="200" step="1" value="5">
+        </label>
+        <p class="hint">参考 tenis keychain v2.gcode：首层 0.25 mm，之后普通层 0.2 mm；实际厚度由层数和层高计算。</p>
+        <label hidden>
+          黑色 TPU 挤出流量倍率
+          <input id="extrusionFlow" type="number" min="0.5" max="1.8" step="0.01" value="1.1">
+        </label>
+      </section>
+
+      <section data-stage="grid">
+        <h2>打印</h2>
+        <label>
+          工具头
+          <select id="tool">
+            <option value="0" selected>T0 / 黑色 TPU</option>
+            <option value="1">T1 / 备用 TPU</option>
+            <option value="2">T2 / 白色 TPU</option>
+            <option value="3">T3 / PLA</option>
+          </select>
+        </label>
+        <label>
+          喷嘴温度 (C)
+          <input id="extruderTemp" type="number" min="0" max="300" step="1" value="250">
+        </label>
+        <label>
+          热床温度 (C)
+          <input id="bedTemp" type="number" min="0" max="120" step="1" value="50">
+        </label>
+      </section>
+
+      <section data-stage="all">
+        <h2>操作</h2>
+        <button id="centerFrame" type="button">居中外框</button>
+        <button id="resetFrame" type="button">重置外框</button>
+        <button id="clearCanvas" type="button">清空画板</button>
+        <button id="downloadJson" type="button">下载参数 JSON</button>
+        <button id="downloadGcode" type="button" class="primary">下载 G-code</button>
+      </section>
+    </aside>
+  </main>
+
+  <script type="module" src="./script.js?v=auto-workflow-pin-endpoint-final-v1-20260827"></script>
+</body>
+</html>
